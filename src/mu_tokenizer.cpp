@@ -16,7 +16,7 @@ void MuTokenizer::tokenize() {
 	const std::regex rnum("[a-fA-F0-9\\.xX]");
 
 	const std::vector<std::string> keywords = {
-		"let", "return", "break", "continue", "if", "elif", "else", "for", "while", "in", "fun"
+		"let", "return", "break", "continue", "if", "elif", "else", "for", "while", "in", "fun", "true", "false", "nil"
 	};
 
 	const std::vector<std::string> comp_eq = {
@@ -63,7 +63,7 @@ void MuTokenizer::tokenize() {
 							ss << std::hex << es;
 							int code; ss >> code;
 
-							ret += '\x00' + code);
+							ret += '\x00' + code;
 						} break;
 						case 'u': {
 							std::string es(1, sr.read());

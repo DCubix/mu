@@ -6,8 +6,10 @@
 #include <unordered_map>
 #include <memory>
 #include <cstdint>
+#include <variant>
+#include <vector>
 
-#define is(x, type) (dynamic_cast<type*>(x) != nullptr)
+using Value = std::variant<std::string, double, bool, int>;
 
 class MuObject;
 
@@ -85,8 +87,25 @@ private:
 	std::string m_value;
 };
 
+struct MuCommand {
+	enum MuCommandType {
+		MuNop = 0,
+		MuPushNumber,
+		MuPushString,
+		MuPushBool,
+		MuPopNumber,
+		MuPopString,
+		MuPopBool,
+		MuBinaryOp,
+		MuUnaryOp,
+		MuJump
+	} type;
+	Value data;
+};
+
 class MuVM {
 public:
+
 	MuVM() = default;
 	~MuVM() = default;
 
@@ -114,8 +133,18 @@ public:
 	enum class UnOp {
 		Positive = 0,
 		Negative,
-		Not
+		Not,
+		LogicNot
 	};
+
+	void addCommand(MuCommand::MuCommandType type, const Value& data);
+	void run();
+
+private:
+	std::vector<MuCommand> m_program;
+
+	std::unordered_map<int, MuObjectPtr> m_objects;
+	std::stack<int> m_stack;
 
 	void pushNumber(double value);
 	void pushBool(bool value);
@@ -127,9 +156,6 @@ public:
 	void unaryOp(UnOp op);
 	void logicNot();
 
-private:
-	std::unordered_map<int, MuObjectPtr> m_objects;
-	std::stack<int> m_stack;
 };
 
 #endif // MU_VM_H

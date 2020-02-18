@@ -4,6 +4,30 @@
 
 uint64_t MuObject::ID = 0;
 
+void MuVM::addCommand(MuCommand::MuCommandType type, const Value& data) {
+	MuCommand cmd;
+	cmd.type = type;
+	cmd.data = data;
+	m_program.push_back(cmd);
+}
+
+void MuVM::run() {
+	size_t pc = 0;
+#define next() (m_program[pc++])
+
+	while (pc < m_program.size()) {
+		auto& cmd = next();
+		switch (cmd.type) {
+			default: break;
+			case MuCommand::MuPushNumber: pushNumber(std::get<double>(cmd.data)); break;
+			case MuCommand::MuPushBool: pushBool(std::get<bool>(cmd.data)); break;
+			case MuCommand::MuBinaryOp: { const BinOp op = BinOp(std::get<int>(cmd.data)); binaryOp(op); } break;
+			case MuCommand::MuUnaryOp: { const UnOp op = UnOp(std::get<int>(cmd.data)); unaryOp(op); } break;
+			case MuCommand::MuJump: pc = std::get<int>(cmd.data); break;
+		}
+	}
+}
+
 void MuVM::pushNumber(double value) {
 	MuNumber* num = new MuNumber();
 	num->value(value);
@@ -85,6 +109,7 @@ void MuVM::unaryOp(UnOp op) {
 			case UnOp::Negative: pushNumber(-va); break;
 			case UnOp::Positive: pushNumber(va < 0.0 ? -va : va); break;
 			case UnOp::Not: pushNumber(~int64_t(va)); break;
+			default: break;
 		}
 	} else {
 		// TODO: Error codes
