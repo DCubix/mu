@@ -1,7 +1,7 @@
 #ifndef MU_PARSER_H
 #define MU_PARSER_H
 
-#include <variant>
+#include <initializer_list>
 
 #include "mu_tokenizer.h"
 #include "mu_vm.h"
@@ -20,19 +20,19 @@ struct NumberNode : public Node {
 
 struct UnOpNode : public Node {
 	NodePtr right;
-	MuVM::UnOp op;
+	std::string op;
 
 	UnOpNode() = default;
-	UnOpNode(MuVM::UnOp op, NodePtr right)
+	UnOpNode(const std::string& op, NodePtr right)
 		: op(op), right(std::move(right)) {}
 };
 
 struct BinOpNode : public Node {
 	NodePtr left, right;
-	MuVM::BinOp op;
+	std::string op;
 
 	BinOpNode() = default;
-	BinOpNode(NodePtr left, MuVM::BinOp op, NodePtr right)
+	BinOpNode(NodePtr left, const std::string& op, NodePtr right)
 		: left(std::move(left)), op(op), right(std::move(right)) {}
 };
 
@@ -43,16 +43,16 @@ public:
 
 	MuParser(const std::vector<MuToken>& tokens);
 
-	NodePtr parse() { return atom(); }
+	NodePtr parse() { return expression(); }
 
 private:
 	MuTokenReader m_reader;
 
-	NodePtr atom();
-	NodePtr factor();
-	NodePtr term();
-	NodePtr arith();
-	NodePtr expr();
+	NodePtr expression();
+
+	bool accepts(const std::initializer_list<MuToken::MuTokenType>& types);
+	bool accepts(const std::initializer_list<std::string>& lexemes);
+	inline MuToken eat() { return m_reader.read(); }
 };
 
 #endif // MU_PARSER_H

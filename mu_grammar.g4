@@ -2,73 +2,66 @@ grammar mu_grammar;
 
 program: block;
 
-varInit : ID ('=' test)?;
+block : stmt*;
+
+varInit : ID ('=' expression)?;
 varList : varInit (',' varInit)*;
 
-block : stmt*;
-body : stmt | '{' block '}';
-
 stmt
-	: ';'
-	| 'break' ';'
-	| 'continue' ';'
-	| 'return' test? ';'
-	| 'let' varList ';'
-	| 'if' test body ('elif' body)* ('else' body)?
-	| 'for' ID 'in' (list | range) body?
-	| 'while' test body?
-	| 'fun' ID '(' varList ')' body // FUNCTION
-	| test ';'
+	: 'break'
+	| 'return' expression
+	| 'continue'
+	| assignment
+	| expression
 	;
 
-range
-	: test '..' test
+assignment
+	: ID trailer* ASSIGN expression
 	;
 
-list
-	: '[]'
-	| '[' arglist ']'
+varDeclare
+	: 'let' varList
 	;
 
-test : ternary (ASSIGN test)?;
+expressionList
+	: expression (',' expression)*
+	;
 
-ternary : or ('?' test ':' test)?;
-
-or : and ('||' and)*;
-
-and : not ('&&' not)*;
-
-not : '!' comparisonEq | comparisonEq;
-
-comparisonEq : comparison (EQ comparison)*;
-
-comparison : expr (COMP expr)*;
-
-expr : bitXor ('|' bitXor)*;
-
-bitXor : bitAnd ('^' bitAnd)*;
-
-bitAnd : shift ('&' shift)*;
-
-shift : arith (('<<'|'>>') arith)*;
-
-arith : term (('+'|'-') term)*;
-
-term : factor (('*'|'/'|'%') factor)*;
-
-factor : ('-'|'+'|'~') factor | trail;
-
-trail : atom trailer*;
-
-atom : ID | NUMBER | STRING;
+expression
+	: ('-' | '+' | '~' | '!') expression
+	| expression '|' expression
+	| expression '^' expression
+	| expression '&' expression
+	| expression ('<<' | '>>') expression
+	| expression ('*' | '/' | '%') expression
+	| expression ('+' | '-') expression
+	| expression COMP expression
+	| expression EQ expression
+	| expression '&&' expression
+	| expression '||' expression
+	| expression 'in' expression
+	| expression '..' expression
+	| NUMBER
+	| ID trailer*
+	| STRING trailer*
+	| list trailer*
+	| 'nil'
+	| ID '(' expressionList? ')' trailer*
+	| 'if' expression ':' block ('elif' expression ':')* ('else' ':')?
+	| 'for' expression 'in' expression ':' block
+	| 'fun' ID? '(' varList? ')' ':' block
+	| '(' expression ')'
+	;
 
 trailer
-	: '(' (arglist)? ')'
-	| '[' test ']'
+	: '(' (expressionList)? ')'
+	| '[' expression ']'
 	| '.' ID
 	;
 
-arglist : test (',' test)*;
+list
+	: '[' expressionList* ']'
+	;
 
 STRING
 	:	'"' ( '\\"' | . )*? '"'
@@ -84,8 +77,7 @@ HEX
 
 NUMBER
 	:	HEX
-	|	DIGIT+
-	|	DIGIT* '.' DIGIT+
+	|	INT ('.' DIGIT+)?
 	;
 
 WS : [ \r\n\t\f] -> skip;
@@ -94,4 +86,8 @@ EQ : '!=' | '==';
 ASSIGN : '+=' | '-=' | '*=' | '/=' | '%=' | '&=' | '|=' | '^=' | '<<=' | '>>=' | '=';
 
 fragment DIGIT : [0-9];
+fragment INT
+	: [1-9] DIGIT*
+	| '0'
+	;
 fragment LETTER : [a-zA-Z];

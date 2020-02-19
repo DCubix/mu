@@ -4,76 +4,63 @@ MuParser::MuParser(const std::vector<MuToken>& tokens) {
 	m_reader = MuTokenReader(tokens);
 }
 
-NodePtr MuParser::atom() {
-	if (m_reader.peek().type == MuToken::MuNumber) {
-		auto val = m_reader.read();
-		return NodePtr(new NumberNode(val.number));
-	}
-	return expr();
-}
-
-NodePtr MuParser::factor() {
-	if (m_reader.peek().type == MuToken::MuSub) {
-		m_reader.read();
-		return NodePtr(new UnOpNode(MuVM::UnOp::Negative, factor()));
-	} else if (m_reader.peek().type == MuToken::MuAdd) {
-		m_reader.read();
-		return NodePtr(new UnOpNode(MuVM::UnOp::Positive, factor()));
-	} else if (m_reader.peek().type == MuToken::MuBitNot) {
-		m_reader.read();
-		return NodePtr(new UnOpNode(MuVM::UnOp::Not, factor()));
-	} else if (m_reader.peek().type == MuToken::MuNot) {
-		m_reader.read();
-		return NodePtr(new UnOpNode(MuVM::UnOp::LogicNot, factor()));
-	}
-	return atom();
-}
-
-NodePtr MuParser::term() {
-	auto left = factor();
-	while (m_reader.peek().type == MuToken::MuMultiply ||
-		m_reader.peek().type == MuToken::MuDivide ||
-		m_reader.peek().type == MuToken::MuModulo)
-	{
-		auto type = m_reader.read().type;
-		auto right = term();
-		MuVM::BinOp op;
-		switch (type) {
-			case MuToken::MuMultiply: op = MuVM::BinOp::Mul; break;
-			case MuToken::MuDivide: op = MuVM::BinOp::Div; break;
-			case MuToken::MuModulo: op = MuVM::BinOp::Mod; break;
-			default: return nullptr;
+NodePtr MuParser::expression() {
+	if (accepts({ "(" })) {
+		eat();
+		auto expr = expression();
+		if (accepts({ ")" })) {
+			eat();
+			return std::move(expr);
 		}
-		return NodePtr(new BinOpNode(std::move(left), op, std::move(right)));
-	}
-	return left;
-}
-
-NodePtr MuParser::arith() {
-	auto left = term();
-	while (m_reader.peek().type == MuToken::MuAdd ||
-		m_reader.peek().type == MuToken::MuSub)
-	{
-		auto type = m_reader.read().type;
-		auto right = arith();
-		MuVM::BinOp op;
-		switch (type) {
-			case MuToken::MuAdd: op = MuVM::BinOp::Add; break;
-			case MuToken::MuSub: op = MuVM::BinOp::Sub; break;
-			default: return nullptr;
+		return nullptr;
+	} else if (accepts({ "+", "-", "~", "!" })) {
+		auto tok = eat();
+		return NodePtr(new UnOpNode(tok.lexeme, expression()));
+	} else if (accepts({ MuToken::MuNumber })) {
+		auto left = NodePtr(new NumberNode(eat().number));
+		if (accepts({ "|", "&", "^" })) {
+			auto tok = eat();
+			return NodePtr(new BinOpNode(std::move(left), tok.lexeme, expression()));
+		} else if (accepts({ "<<", ">>" })) {
+			auto tok = eat();
+			return NodePtr(new BinOpNode(std::move(left), tok.lexeme, expression()));
+		} else if (accepts({ "*", "/", "%" })) {
+			auto tok = eat();
+			return NodePtr(new BinOpNode(std::move(left), tok.lexeme, expression()));
+		} else if (accepts({ "+", "-" })) {
+			auto tok = eat();
+			return NodePtr(new BinOpNode(std::move(left), tok.lexeme, expression()));
+		} else if (accepts({ "<", ">", "<=", ">=" })) {
+			auto tok = eat();
+			return NodePtr(new BinOpNode(std::move(left), tok.lexeme, expression()));
+		} else if (accepts({ "!=", "==" })) {
+			auto tok = eat();
+			return NodePtr(new BinOpNode(std::move(left), tok.lexeme, expression()));
+		} else if (accepts({ "&&", "||" })) {
+			auto tok = eat();
+			return NodePtr(new BinOpNode(std::move(left), tok.lexeme, expression()));
+		} else if (accepts({ "in", ".." })) {
+			auto tok = eat();
+			return NodePtr(new BinOpNode(std::move(left), tok.lexeme, expression()));
 		}
-		return NodePtr(new BinOpNode(std::move(left), op, std::move(right)));
+		return left;
 	}
-	return left;
+
+	return nullptr;
 }
 
-NodePtr MuParser::expr() {
-	if (m_reader.peek().lexeme == "(") {
-		m_reader.read();
-		auto exp = arith();
-		if (m_reader.peek().lexeme != ")") return nullptr;
-		m_reader.read();
-		return exp;
+bool MuParser::accepts(const std::initializer_list<MuToken::MuTokenType>& types) {
+	auto tok = m_reader.peek();
+	for (auto& t : types) {
+		if (tok.type == t) return true;
 	}
-	return arith();
+	return false;
+}
+
+bool MuParser::accepts(const std::initializer_list<std::string>& lexemes) {
+	auto tok = m_reader.peek();
+	for (auto& t : lexemes) {
+		if (tok.lexeme == t) return true;
+	}
+	return false;
 }
